@@ -1,0 +1,5 @@
+{
+  "name": "Veo 2 Videos",
+  "description": "An intuitive interface to convert a static image into a dynamic video using Google's Veo 2 model. Upload an image, configure settings like aspect ratio and a descriptive prompt, and generate a high-quality video.",
+  "requestFramePermissions": []
+}
