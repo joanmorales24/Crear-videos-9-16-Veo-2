@@ -1,12 +1,54 @@
-
-import { GoogleGenAI } from "@google/genai";
-import type { GenerateVideosOperationResponse } from '@google/genai';
+import { GoogleGenAI, Modality } from "@google/genai";
+// Fix: Corrected the type import from GenerateVideosOperationResponse to GenerateVideosOperation.
+import type { GenerateVideosOperation } from '@google/genai';
 import { AspectRatio } from "../types";
 
 const POLLING_INTERVAL_MS = 10000;
 
 // This function simulates a delay, useful for polling.
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const getAiClient = () => {
+    if (!process.env.API_KEY) {
+        throw new Error("API key no está configurada. Por favor, asegúrate de que process.env.API_KEY esté disponible.");
+    }
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
+}
+
+export const editImage = async (
+    imageBase64: string,
+    mimeType: string,
+    prompt: string,
+): Promise<string> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                data: imageBase64,
+                mimeType: mimeType,
+              },
+            },
+            {
+              text: prompt,
+            },
+          ],
+        },
+        config: {
+            responseModalities: [Modality.IMAGE, Modality.TEXT],
+        },
+    });
+
+    for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+            return part.inlineData.data;
+        }
+    }
+
+    throw new Error("El modelo no devolvió una imagen editada.");
+}
 
 export const generateVideoFromImage = async (
   imageBase64: string,
@@ -15,13 +57,11 @@ export const generateVideoFromImage = async (
   aspectRatio: AspectRatio,
   updateStatus: (message: string) => void
 ): Promise<string> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API key no está configurada. Por favor, asegúrate de que process.env.API_KEY esté disponible.");
-  }
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiClient();
 
   updateStatus("Iniciando la generación de video...");
-  let operation: GenerateVideosOperationResponse = await ai.models.generateVideos({
+  // Fix: Corrected the type annotation for the operation variable.
+  let operation: GenerateVideosOperation = await ai.models.generateVideos({
     model: 'veo-2.0-generate-001',
     prompt: prompt,
     image: {
